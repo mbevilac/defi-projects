@@ -61,6 +61,14 @@ import "./IERC20.sol";
          balances[msg.sender] = total_supply; // the whole supply goes to the issuer at the very beginning
      }
 
+     function getName() external view returns(string memory) {
+         return name;
+     }
+
+     function getSymbol() external view returns(string memory) {
+         return symbol;
+     }
+
     /**
      * @dev Returns the amount of tokens in existence.
      */
@@ -240,6 +248,13 @@ import "./IERC20.sol";
         // check if the receiver is authorized to receive the money
         require( authorized[receiver] == true, "The receiver address is not authorized to receive tokens from this sender");
 
+    }
+
+    function setIssuer(address _issuer) external onlyIssuer() {
+        
+        require( issuer != _issuer, "The new issuer is the same as the old one");
+        
+        issuer = _issuer;
     }
 
 }
