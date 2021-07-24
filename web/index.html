@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <link rel="stylesheet" href="custom.css">
+
+    <title>Welcome to RToken Bank - tranfer your RToken safely to trusted addresses</title>
+  </head>
+  <body>
+    <h1>Welcome to RToken Bank</h1>
+
+    <form id="metamask-form">
+        <button type="submit" class="btn btn-primary">Connect to Metamask</button>
+        <div class="form-group">
+            <label for="Address">Your ETH address</label>
+            <input value="" type="text" class="form-control" id="fromAddress" aria-describedby="toAddressHelp" placeholder="Enter the recipient address" required="false" readonly="true">
+            <small id="toAddressHelp" class="form-text text-muted">Your ETH address</small>
+        </div>
+    </form>
+
+
+
+    <div class="admin-group">
+
+      <form id="admin-form">
+
+      </form>
+
+    </div>
+
+
+    <div class="user-group">
+
+      <h2>User Account</h2>
+
+      <div class="form-group">
+        <label for="ethBalance">Your ETH balance</label>
+        <input value="" type="text" class="form-control" id="eth-user-balance" aria-describedby="toAddressHelp" placeholder="ETH balance is 0" required="false" readonly="true">
+    </div>
+
+    <div class="form-group">
+        <label for="tokenBalance">Your RToken balance</label>
+        <input value="" type="text" class="form-control" id="token-user-balance" aria-describedby="toAddressHelp" placeholder="RToken balance is 0" required="false" readonly="true">
+    </div>
+
+
+      <form id="user-form">
+          <div class="form-group">
+              <label for="Receiver Address">Receiver ETH address</label>
+              <input value="" type="text" class="form-control" id="toAddress" aria-describedby="toAddressHelp" placeholder="Enter the recipient address" required="true" >
+              <small id="toAddressHelp" class="form-text text-muted">Enter the wallet address of the recipient</small>
+          </div>
+          <button type="submit" class="btn btn-primary">Submit</button>
+      </form>
+
+    </div>
+
+    <!-- web3 -->
+    <script src="web3.min.js"></script>
+    <script src="abiRtoken.js"></script>
+    <!-- <script src="web3.min.js.map"></script> -->
+    <!-- Optional JavaScript; choose one of the two! -->
+
+    <!-- Option 1: Bootstrap Bundle with Popper 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+
+    -->
+
+    <!-- Option 2: Separate Popper and Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.6.0.slim.min.js" integrity="sha256-u7e5khyithlIdTpu22PHhENmPcRdFiHRjhAuHcs05RI=" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js" integrity="sha384-IQsoLXl5PILFhosVNubq5LC7Qb9DXgDA9i+tQ8Zj3iwWAwPtgFTxbJ8NT4GN1R8p" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.min.js" integrity="sha384-cVKIPhGWiC2Al4u+LWgxfKTRIcfu0JTxR+EQDz/bgldoEyl4H0zUF0QKbrJ0EcQF" crossorigin="anonymous"></script>
+    
+    <script>
+
+         if( typeof window.ethereum != 'undefined'){
+             web3 = new Web3(window.ethereum); // use metamask
+         } else {
+             web3 = new Web3(new Web3.providers.HttpProvider("http://localhost:7545"));
+             console.log("using default provider".concat(web3));
+         }
+
+         console.log("using web3 version: ".concat(web3.version));
+
+         const userAccounts = web3.eth.getAccounts();
+         var fromAddress = userAccounts.length && userAccounts[0];
+
+         console.log("account retrieved: ".concat(fromAddress));
+
+         var RTokenContract = new web3.eth.Contract(rTokenAbi, '0xb463677e3d90b0CBcf22811795985EeB7A381daC');
+
+         $('#metamask-form').submit(function() {
+             event.preventDefault();
+
+             if( typeof window.ethereum != 'undefined') {
+
+                if(window.ethereum.isConnected() ){
+                    console.log('Metamask connected and installed');
+
+                    try {
+
+                        window.ethereum.enable().then( function(accounts) {
+                        fromAddress = accounts[0];
+                        console.log("account retrieved: ".concat(fromAddress));
+                        $('#fromAddress').val(fromAddress);
+                        // retrieve tokens
+                        web3.eth.getBalance(fromAddress).then( function(balance) {
+                            $('#eth-user-balance').val( balance );
+                        });
+
+                        RTokenContract.methods.balanceOf(fromAddress).call({from: fromAddress}, function(error, result) {
+                            if(error) {
+                                console.log("error while retrieving token balance " + error);
+                                return;
+                            }
+                            else {
+                                $('#token-user-balance').val( result );
+                            }
+                        });
+
+                        });
+
+                    }catch(error) {
+                        console.log("error ".concat(error));
+                    }
+                }
+             }
+
+         });
+
+
+    </script>
+
+    
+  </body>
+</html>

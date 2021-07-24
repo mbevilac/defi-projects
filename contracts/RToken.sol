@@ -3,6 +3,7 @@
 pragma solidity ^0.8.0;
 
 import "./IERC20.sol";
+import "./TransferControl.sol";
 
 /**
  * @dev Implementation of the {IERC20} interface.
@@ -42,7 +43,7 @@ import "./IERC20.sol";
 
     mapping(address => mapping( address => uint256)) private allowances;
 
-    mapping(address => bool) private authorized;
+    TransferControl transfer_ctrl;
 
     event AddressAuthorized(address _address);
 
@@ -176,7 +177,7 @@ import "./IERC20.sol";
 
         uint256 allowed_amount = allowances[sender][recipient];
 
-        require(amount <= allowed_amount, "Requesting an mount greater than the allowed one");
+        require(amount <= allowed_amount, "Requesting an amount greater than the allowed one");
 
         uint256 sender_amount = balances[sender];
 
@@ -227,26 +228,22 @@ import "./IERC20.sol";
 
     }
 
-    function authorize(address _address) external onlyIssuer() {
-
-        require(authorized[_address] == false, "Address already authorized");
-
-        authorized[_address] = true;
-
-        emit AddressAuthorized(_address);
-
-    }
-
 
     function isAuthorized(address _address) external view returns (bool) {
-
-        return authorized[_address];
+        
+        // check if a transfer control policy has been set
+        return transfer_ctrl.isTransferAllowed(msg.sender, _address);
     }
 
     function _preTransfer(address sender, address receiver, uint256 amount) view internal {
         
+        if( address( transfer_ctrl ) ==  0x0000000000000000000000000000000000000000  ){
+            // no policy set
+            return;
+        }
+
         // check if the receiver is authorized to receive the money
-        require( authorized[receiver] == true, "The receiver address is not authorized to receive tokens from this sender");
+        require( transfer_ctrl.isTransferAllowed(sender, receiver) == true, "The receiver address is not authorized to receive tokens from this sender");
 
     }
 
@@ -255,6 +252,11 @@ import "./IERC20.sol";
         require( issuer != _issuer, "The new issuer is the same as the old one");
         
         issuer = _issuer;
+    }
+
+    function setTransferControlPolicy(address _address) external onlyIssuer() {
+
+        transfer_ctrl = TransferControl(_address); // Set to 0x0 address in order to unset it
     }
 
 }

@@ -11,16 +11,18 @@ contract LiquidityPool {
     */
    mapping(address => uint256 ) private investors;
 
+   mapping(address => uint256) private borrowers;
+
    RToken private token;
 
-   uint256 private k;
+   uint256 private k; // constant product between eth and tokens
 
    address private owner;
 
 
-   event AmountInvested(address _investor, uint256 _amount, uint256 _tokens);
+   event LiquidityProvided(address _sender, uint256 _eth, uint256 _tokens, bool _eth_provided);
 
-   constructor(address _tokenAddress) {
+   constructor(address _tokenAddress) payable {
 
        require(msg.sender != 0x0000000000000000000000000000000000000000, "Owner cannot be the NULL address");
        
@@ -28,8 +30,9 @@ contract LiquidityPool {
 
        token = RToken(_tokenAddress);
 
-       k = 10; // 10 tokens for 1 ETH
+       uint256 tokens = token.totalSupply();
 
+       k = tokens * msg.value;
       
    }
 
@@ -45,6 +48,13 @@ contract LiquidityPool {
 
    function borrow(uint256 amount) external {
 
+
+
+   }
+
+   function repay(uint256 amount) external {
+
+
    }
 
    /**
@@ -52,26 +62,6 @@ contract LiquidityPool {
     */
    function invest() payable external {
 
-      uint256 amount = msg.value;
-
-      require( amount > 0 , "Amount invested is zero");
-
-      unchecked {
-
-          investors[msg.sender] += amount;
-          
-      }
-
-      // Amount of tokens
-      uint256 tokens_amount = amount * k;
-
-      uint256 current_balance = token.balanceOf(address(0));
-
-      require( current_balance >= tokens_amount, "Insufficient balance of tokens.");
-
-      token.transfer(msg.sender, tokens_amount);
-
-      emit AmountInvested(msg.sender, amount, tokens_amount);
       
      
    }
@@ -83,18 +73,78 @@ contract LiquidityPool {
     */
    function redeem(uint256 amount) payable external {
 
-       uint256 eth_invested = investors[msg.sender];
-
-       require(amount > 0, "The amount to be redeemed must be positive");
-
-       require( eth_invested > 0, "This address did not invest any ETH with this LP");
-
-       uint256 eth_redeemed = k * amount;
-
-       payable(msg.sender).transfer(eth_redeemed);
-
 
        
+   }
+
+
+   function borrow() payable external returns(uint256) {
+
+      uint256 eth_provided = msg.value; // amount of ETH provided
+
+      require(eth_provided > 0, "ETH amount should be greater than zero");
+
+      // current balance
+      uint256 eth_balance = address(this).balance;
+
+      uint256 new_token_balance;
+      uint256 token_amount;
+
+      (token_amount, new_token_balance) = _computeNewSupply(eth_provided, eth_balance, k );
+
+      token.transferFrom(address(this), msg.sender, token_amount);
+
+      emit LiquidityProvided(msg.sender, eth_provided, token_amount, true);
+
+      return token_amount;
+
+   }
+
+   function enterMarket(uint256 amount) external {
+
+       token.approve(address(this), amount);
+
+   }
+
+   function provideLiquidity(uint256 amount) payable external {
+      
+       // ...
+   }
+
+   /**
+    * Calculate new supply given the formula X*Y = C
+    * We assume dx is the increment in x supply, 
+    * x0 is the current supply and c is the constant
+    * value binding x and y supplies (x*y = c)
+    * Returns the new supply and the supply increment
+    */
+   function _computeNewSupply(uint256 dx, uint256 x0, uint256 c) private pure returns(uint256 dy, uint256 y1) {
+
+       // calculate current supply of y0 from relation x*y = c
+       uint256 y0 = 0;
+       
+       unchecked {
+
+         y0 = c/x0;  
+
+       }
+       
+       // calculate new supply of y given the increment dx
+
+       y1 = 0;
+       dy = 0;
+
+       unchecked {
+
+            y1 = c/(dx + x0);
+
+            dy = y0 - y1;
+           
+       }
+       
+
+       return (dy, y1);
+
    }
 
 
