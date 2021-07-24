@@ -25,11 +25,12 @@
 
 
 
-    <div class="user-group">
+    <div class="admin-group">
 
-      <h2>User Account</h2>
+    <h2>Admin Account</h2>
 
-      <div class="form-group">
+    <div class="form-group">
+
         <label for="ethBalance">Your ETH balance</label>
         <input value="" type="text" class="form-control" id="eth-user-balance" aria-describedby="toAddressHelp" placeholder="ETH balance is 0" required="false" readonly="true">
     
@@ -41,20 +42,30 @@
 
     <form id="approval-form">
         <div class="form-group">
+            <label for="Receiver Address">Sender ETH address</label>
+            <input value="" type="text" class="form-control" id="senderAddress" aria-describedby="toAddressHelp" placeholder="Enter the sender address" required="true" >
             <label for="Receiver Address">Receiver ETH address</label>
-            <input value="" type="text" class="form-control" id="toAddress" aria-describedby="toAddressHelp" placeholder="Enter the recipient address" required="true" >
-            <label for="Receiver Address">Allowed amount</label>
-            <input value="" type="text" class="form-control" id="toAddressAllowance" aria-describedby="toAddressHelp" placeholder="Enter the allowance" required="true" >
+            <input value="" type="text" class="form-control" id="receiverAddress" aria-describedby="toAddressHelp" placeholder="Enter the recipient address to be allowed" required="true" >
           </div>
-        <button type="submit" class="btn btn-primary">Allow</button>
+        <button type="submit" class="btn btn-primary">Allow Transfer</button>
     </form>
 
-    <form id="transfer-form">
+    <form id="txctrl-form">
         <div class="form-group">
-            <label for="Receiver Amount">Amount to transfer</label>
-            <input value="" type="text" class="form-control" id="toAddressAmount" aria-describedby="toAddressHelp" placeholder="Enter the amount to transfer" required="true" >
+            <h3>Set Transfer Control Address</h3>
+            <label for="Transfer Control Contract Address">Transfer Control Contract address</label>
+            <input value="" type="text" class="form-control" id="txCtrlAddress" aria-describedby="toAddressHelp" placeholder="Enter the transfer control address" required="true" >
           </div>
-        <button type="submit" class="btn btn-primary">Transfer</button>
+        <button type="submit" class="btn btn-primary">Set Address</button>
+    </form>
+
+    <form id="verify-form">
+        <div class="form-group">
+            <h3>Verify transfer between addresses</h3>
+            <label for="Transfer Control Contract Address">Verify transfer between sender and receiver</label>
+            <input value="" type="text" class="form-control" id="verifyTransfer" aria-describedby="toAddressHelp" placeholder="Verify transfer (true/false)" required="false" readonly="true" >
+          </div>
+        <button type="submit" class="btn btn-primary">Verify Transfer</button>
     </form>
 
     </div>
@@ -63,6 +74,7 @@
     <!-- web3 -->
     <script src="web3.min.js"></script>
     <script src="abiRtoken.js"></script>
+    <script src="txCtrlAbi.js"></script>
     <!-- <script src="web3.min.js.map"></script> -->
     <!-- Optional JavaScript; choose one of the two! -->
 
@@ -93,6 +105,7 @@
          console.log("account retrieved: ".concat(fromAddress));
 
          var RTokenContract = new web3.eth.Contract(rTokenAbi, '0xa6C361F3ae58cf416B94C1bBdda6E1bD1f8db9CF');
+         var txCtrlContract = new web3.eth.Contract(txCtrlAbi, '0x207e4d32583A65C178c66A17864dAE5592D78b10');
 
 
          $('#metamask-form').submit(function() {
@@ -114,6 +127,26 @@
                         // retrieve tokens
                         web3.eth.getBalance(fromAddress).then( function(balance) {
                             $('#eth-user-balance').val( balance );
+                        });
+
+                        // check that the fromAddress is the token issuer (admin)
+                        RTokenContract.methods.getIssuer().call({from: fromAddress}, function(error, result) {
+                            if(error) {
+                                console.log("error while retrieving the issuer");
+                                return;
+                            } else {
+                                console.log("currently logged in user: " + fromAddress);
+                                console.log("token issuer address: " + result);
+
+                                if( result.toLowerCase() == fromAddress.toLowerCase() ){
+                                    console.log("The currently logged in user is the Token issuer");
+                                    
+
+                                } else {
+                                    console.log("the currently logged in user " + fromAddress + " is not the Token issuer " + result);
+                                    throw ({'error':'currently logged in user is not the token issuer'});
+                                }
+                            }
                         });
 
                         RTokenContract.methods.balanceOf(fromAddress).call({from: fromAddress}, function(error, result) {
@@ -142,41 +175,67 @@
 
             var fromAddress = $('#fromAddress').val();
 
-            var toAddress = $('#toAddress').val();
-            var allowedAmount =  $('#toAddressAllowance').val();
+            var senderAddress = $('#senderAddress').val();
+            var receiverAddress =  $('#receiverAddress').val();
 
-            console.log("allowing address " + toAddress);
-            console.log("with amount " + allowedAmount);
+            console.log("address approval process started");
+            console.log("sender address " + senderAddress);
+            console.log("receiver address " + receiverAddress);
 
-            RTokenContract.methods.approve(toAddress, allowedAmount).send({from: fromAddress}, function(error, result) {
+            txCtrlContract.methods.allowTransfer(senderAddress, receiverAddress).send({from: fromAddress}, function(error, result) {
                 if(error) {
-                    console.log("error during allowance: " + error);
+                    console.log("error during address approval process: " + error);
                     return;
                 } else {
-                    console.log("allowance of " + allowedAmount + " for address " + toAddress + " succeeded");
+                    console.log("transfer from address " + senderAddress + " to address " + receiverAddress + " approved");
                 }
             });
 
          });
 
-         $("#transfer-form").submit( function() {
+
+         $("#txctrl-form").submit( function() {
             
             event.preventDefault();
 
             var fromAddress = $('#fromAddress').val();
 
-            var toAddress = $('#toAddress').val();
-            var amount =  $('#toAddressAmount').val();
+            var txCtrlAddress = $('#txCtrlAddress').val();
 
-            console.log("transfering to address " + toAddress);
-            console.log("token amount " + amount);
+            console.log("setting transfer control started");
+            console.log("tx control address " + receiverAddress);
 
-            RTokenContract.methods.transferFrom(fromAddress,toAddress, amount).send({from: fromAddress}, function(error, result) {
+            RTokenContract.methods.setTransferControlPolicy(txCtrlAddress).send({from: fromAddress}, function(error, result) {
                 if(error) {
-                    console.log("error during allowance: " + error);
+                    console.log("error during setting transfer control: " + error);
                     return;
                 } else {
-                    console.log("transfer of " + amount + " tokens to address " + toAddress + " succeeded");
+                    console.log("transfer control with address " + txCtrlAddress + " succeeded");
+                }
+            });
+
+         });
+
+         $("#verify-form").submit( function() {
+            
+            event.preventDefault();
+
+            var fromAddress = $('#fromAddress').val();
+
+            var senderAddress = $('#senderAddress').val();
+
+            var receiverAddress = $('#receiverAddress').val();
+
+            console.log("verifying if transfer between " + senderAddress + " and " + receiverAddress + " is allowed");
+            
+
+            txCtrlContract.methods.isTransferAllowed(senderAddress, receiverAddress).call({from: fromAddress}, function(error, result) {
+                if(error) {
+                    console.log("error during transfer verification: " + error);
+                    return;
+                } else {
+                    console.log("is transfer between " + senderAddress + " " + receiverAddress + " allowed? " + result);
+                    $('#verifyTransfer').val(result);
                 }
             });
 

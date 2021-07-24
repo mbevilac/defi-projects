@@ -53,12 +53,12 @@ import "./TransferControl.sol";
         _;
     }
 
-     constructor() {
+     constructor(string memory _name, string memory _smybol, uint256 _total_supply) {
 
-         name = "RToken";
-         symbol = "RTK";
+         name = _name;
+         symbol = _smybol;
          issuer = msg.sender;
-         total_supply = uint256(100);
+         total_supply = _total_supply;
          balances[msg.sender] = total_supply; // the whole supply goes to the issuer at the very beginning
      }
 
@@ -96,7 +96,7 @@ import "./TransferControl.sol";
     function transfer(address recipient, uint256 amount) external override returns (bool) {
 
         // Here I will check if the recipient is in the list of the allowed recipients 
-        _preTransfer(msg.sender, recipient, amount);
+        _preTransfer(msg.sender, recipient);
 
         uint256 avail_amount = balances[msg.sender];
 
@@ -173,7 +173,7 @@ import "./TransferControl.sol";
         uint256 amount
     ) external override returns (bool) {
 
-        _preTransfer(sender, recipient, amount);
+        _preTransfer(sender, recipient);
 
         uint256 allowed_amount = allowances[sender][recipient];
 
@@ -235,7 +235,7 @@ import "./TransferControl.sol";
         return transfer_ctrl.isTransferAllowed(msg.sender, _address);
     }
 
-    function _preTransfer(address sender, address receiver, uint256 amount) view internal {
+    function _preTransfer(address sender, address receiver) view internal {
         
         if( address( transfer_ctrl ) ==  0x0000000000000000000000000000000000000000  ){
             // no policy set
@@ -252,6 +252,12 @@ import "./TransferControl.sol";
         require( issuer != _issuer, "The new issuer is the same as the old one");
         
         issuer = _issuer;
+    }
+
+    function getIssuer() external view returns(address) {
+
+        return issuer;
+
     }
 
     function setTransferControlPolicy(address _address) external onlyIssuer() {

@@ -25,6 +25,7 @@ contract LiquidityPool {
    constructor(address _tokenAddress) payable {
 
        require(msg.sender != 0x0000000000000000000000000000000000000000, "Owner cannot be the NULL address");
+       require(_tokenAddress != 0x0000000000000000000000000000000000000000, "Token address cannot be NULL");
        
        owner = msg.sender;
 
