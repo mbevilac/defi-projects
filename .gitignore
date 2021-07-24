@@ -1,0 +1,9 @@
+logs/
+build/contracts
+build/contracts/IERC20.json
+build/contracts/LiquidityPool.json
+build/contracts/Migrations.json
+build/contracts/RToken.json
+build/contracts/TransferControl.json
+build/contracts/IERC20.json
+build/contracts/Migrations.json
